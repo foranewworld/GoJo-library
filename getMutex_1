@@ -7,7 +7,7 @@ import (
 	"github.com/junctional/GoJo/gojo/types"
 )
 
-func getMutex() (func(types.Unit), func(types.Unit) (types.Unit, error)) {
+func getMutex() (func(types.Unit) (types.Unit, error), func(types.Unit)) {
 	j := junction.NewJunction()
 
 	lockPort, lock := junction.NewSyncPort[types.Unit, types.Unit](j)
@@ -16,9 +16,7 @@ func getMutex() (func(types.Unit), func(types.Unit) (types.Unit, error)) {
 	junction.NewBinarySyncJoinPattern[types.Unit, types.Unit, types.Unit](lockPort, unlockPort).Action(func(a types.Unit, b types.Unit) types.Unit {
 		return types.Unit{}
 	})
-
-	
-
+	unlock(types.Unit{})
 	return lock, unlock
 }
 
@@ -48,4 +46,3 @@ func main() {
 	for true {
 	}
 }
-
