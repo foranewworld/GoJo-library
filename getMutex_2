@@ -1,54 +1,51 @@
 package main
 
 import (
-"fmt"
-"github.com/junctional/GoJo/gojo/junction"
-"github.com/junctional/GoJo/gojo/types"
+	"fmt"
+
+	"github.com/junctional/GoJo/gojo/junction"
+	"github.com/junctional/GoJo/gojo/types"
 )
 
 func getMutex() (func(types.Unit), func(types.Unit) (types.Unit, error)) {
-j := junction.NewJunction()
+	j := junction.NewJunction()
 
-releasePort, release := junction.NewAsyncPort[types.Unit](j)
-acquirePort, acquire := junction.NewSyncPort[types.Unit, types.Unit](j)
-lockPort, lock := junction.NewAsyncPort[types.Unit](j)
+	lockPort, lock := junction.NewSyncPort[types.Unit, types.Unit](j)
+	unlockPort, unlock := junction.NewAsyncPort[types.Unit](j)
 
-junction.NewBinarySyncJoinPattern[types.Unit, types.Unit, types.Unit](lockPort, acquirePort).Action(func(a types.Unit, b types.Unit) types.Unit {
-return types.Unit{}
-})
+	junction.NewBinarySyncJoinPattern[types.Unit, types.Unit, types.Unit](lockPort, unlockPort).Action(func(a types.Unit, b types.Unit) types.Unit {
+		return types.Unit{}
+	})
 
-junction.NewUnaryAsyncJoinPattern[types.Unit](releasePort).Action(func(a types.Unit) {
-lock(types.Unit{})
-})
+	
 
-lock(types.Unit{})
-
-return release, acquire
+	return lock, unlock
 }
 
 func main() {
-release, acquire := getMutex()
+	lock, unlock := getMutex()
 
-sharedVar := 0
+	sharedVar := 0
 
-for i := 0; i < 10; i += 2 {
-go func() {
-acquire(types.Unit{})
-sharedVar += 2
-fmt.Println("Incrementing: ", sharedVar)
-release(types.Unit{})
-}()
+	for i := 0; i < 10; i += 2 {
+		go func() {
+			lock(types.Unit{})
+			sharedVar += 2
+			fmt.Println("Incrementing: ", sharedVar)
+			unlock(types.Unit{})
+		}()
+	}
+
+	for i := 1; i < 10; i += 2 {
+		go func() {
+			lock(types.Unit{})
+			sharedVar -= 2
+			fmt.Println("Decrementing: ", sharedVar)
+			unlock(types.Unit{})
+		}()
+	}
+
+	for true {
+	}
 }
 
-for i := 1; i < 10; i += 2 {
-go func() {
-acquire(types.Unit{})
-sharedVar -= 2
-fmt.Println("Decrementing: ", sharedVar)
-release(types.Unit{})
-}()
-}
-
-for true {
-}
-}
